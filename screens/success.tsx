@@ -1,13 +1,14 @@
-
-
 import React from 'react';
 import { View, Text, StyleSheet, Button } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../Navigation/AppNavigator';
 
-type SuccessRouteProp = RouteProp<{ Success: { email: string } }, 'Success'>;
+type SuccessRouteProp = RouteProp<RootStackParamList, 'Success'>;
+type SuccessScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Success'>;
 
 const SuccessScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<SuccessScreenNavigationProp>();
   const route = useRoute<SuccessRouteProp>();
   const { email } = route.params;
 
@@ -18,8 +19,8 @@ const SuccessScreen = () => {
         The admin account for {email} has been successfully created.
       </Text>
       <Button
-        title="Back to Admin List"
-        
+        title="Back to Home"
+        onPress={() => navigation.navigate('Home')}
       />
     </View>
   );
