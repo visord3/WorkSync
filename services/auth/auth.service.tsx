@@ -8,7 +8,7 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { auth} from '../firebase/firebaseconfig';
+import { auth, db } from '../firebase/firebaseconfig';
 import { doc, getDoc } from 'firebase/firestore';
 
 // Define user roles
@@ -158,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error: any) {
       console.error('Sign in error:', error);
+      Alert.alert('Login Failed', 'Invalid email or password');
       return false;
     } finally {
       setLoading(false);
@@ -184,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error('Password reset error:', error);
+      Alert.alert('Password Reset Failed', 'Unable to send password reset email');
       return false;
     }
   };
