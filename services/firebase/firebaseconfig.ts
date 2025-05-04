@@ -1,10 +1,9 @@
 // services/firebase/firebaseconfig.ts
 
-// Import the functions you need from the SDKs you need
-import { initializeApp, getApp, getApps } from "firebase/app"; // Import initializeApp and helpers
-import { getAuth } from "firebase/auth"; // Import getAuth
-import { getFirestore } from "firebase/firestore"; // Import getFirestore for Firestore
-// import { getAnalytics } from "firebase/analytics"; // Optional
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 // Your web app's Firebase configuration (MAKE SURE THESE ARE CORRECT FOR YOUR PROJECT)
 const firebaseConfig = {
@@ -18,14 +17,14 @@ const firebaseConfig = {
 };
 
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+initializeApp(firebaseConfig);
 
 
 
 // Get Auth and Firestore instances
-const auth = getAuth(app); // Get the auth instance [cite: 44]
-const firestore = getFirestore(app); // Get the firestore instance
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const functions = getFunctions(app);
 
-
-// Export the initialized services
-export { auth, firestore,app }; // Export auth [cite: 44] and firestore
+export default { app, auth, db, functions };
