@@ -6,13 +6,14 @@ import CreateAdminScreen from '../screens/SAcreateAdmin';
 import HomeScreen from '../screens/Home';
 import SuccessScreen from '../screens/success';
 import { useAuth, UserRole } from '../services/auth/auth.service';
-import LoginScreen from '../screens/logInPage'; // Assuming you have a login screen
+import LoginScreen from '../screens/logInPage';
 
 export type RootStackParamList = {
     Home: undefined;
     CreateAdmin: undefined;
     Success: { email: string };
     Login: undefined;
+    CreateEmployee?: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -44,6 +45,13 @@ const AppNavigator = () => {
                         <Stack.Screen
                             name="CreateAdmin"
                             component={CreateAdminScreen}
+                        />
+                    )}
+                    {/* Only show CreateEmployee screen for admin users */}
+                    {user.role === UserRole.ADMIN && (
+                        <Stack.Screen
+                            name="CreateEmployee"
+                            component={require('../screens/CreateEmployeeScreen').default}
                         />
                     )}
                     <Stack.Screen name="Success" component={SuccessScreen} />

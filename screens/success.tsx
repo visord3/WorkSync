@@ -12,11 +12,23 @@ const SuccessScreen = () => {
   const route = useRoute<SuccessRouteProp>();
   const { email } = route.params;
 
+  // Determine the message based on the previous route
+  const getPreviousScreenName = () => {
+    const previousRoute = navigation.getState().routes[navigation.getState().routes.length - 2];
+    return previousRoute?.name === 'CreateAdmin' 
+      ? 'Admin' 
+      : previousRoute?.name === 'CreateEmployee' 
+        ? 'Employee' 
+        : 'User';
+  };
+
+  const userType = getPreviousScreenName();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Admin Created!</Text>
+      <Text style={styles.title}>{userType} Created!</Text>
       <Text style={styles.message}>
-        The admin account for {email} has been successfully created.
+        The {userType.toLowerCase()} account for {email} has been successfully created.
       </Text>
       <Button
         title="Back to Home"
