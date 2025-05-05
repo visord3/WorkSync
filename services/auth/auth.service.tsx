@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Import our wrapper instead of AsyncStorage directly
+import SecureStorage from '../storage/storage';
 // Assuming you're using Firebase
 import { 
   signInWithEmailAndPassword,
@@ -112,14 +113,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           setUser(userData);
           
-          // Store auth state in AsyncStorage
-          await AsyncStorage.setItem('userAuthState', JSON.stringify({
+          // Store auth state in SecureStorage instead of AsyncStorage
+          await SecureStorage.setItem('userAuthState', JSON.stringify({
             uid: firebaseUser.uid,
             role
           }));
         } else {
           setUser(null);
-          await AsyncStorage.removeItem('userAuthState');
+          await SecureStorage.removeItem('userAuthState');
         }
       } catch (error) {
         console.error('Auth state change error:', error);
@@ -131,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Try to restore session
     const restoreSession = async () => {
       try {
-        const savedAuthState = await AsyncStorage.getItem('userAuthState');
+        const savedAuthState = await SecureStorage.getItem('userAuthState');
         if (savedAuthState && !auth.currentUser) {
           // If we have saved state but no current user,
           // we'll wait for onAuthStateChanged to handle it
@@ -170,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       await firebaseSignOut(auth);
-      await AsyncStorage.removeItem('userAuthState');
+      await SecureStorage.removeItem('userAuthState');
     } catch (error) {
       console.error('Sign out error:', error);
     } finally {
