@@ -1,8 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { Alert} from 'react-native';
-// Import our wrapper instead of AsyncStorage directly
+import { Alert } from 'react-native';
 import SecureStorage from '../storage/storage';
-// Assuming you're using Firebase
 import { 
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -15,41 +13,31 @@ import {
 } from '../firebase/firebaseconfig';
 import { 
   doc, 
-  getDoc,
-  onSnapshot,
-  getDocFromCache
+  getDoc
 } from 'firebase/firestore';
 
 // Define user roles
 export enum UserRole {
-  ADMIN = 'admin',
   SUPER_ADMIN = 'superAdmin',
+  ADMIN = 'admin',
   EMPLOYEE = 'employee'
 }
 
-// Define home routes for each role
-export const ROLE_HOME_ROUTES = {
-  [UserRole.ADMIN]: '/tabs/admin',
-  [UserRole.SUPER_ADMIN]: '/tabs/superAdmin',
-  [UserRole.EMPLOYEE]: '/tabs/employee'
-};
-
-// Define types
-type User = {
+// Define user interface
+export interface User {
   uid: string;
   email: string;
   displayName: string | null;
   role: UserRole;
   department?: string;
-} | null;
+}
 
 type AuthContextType = {
-  user: User;
+  user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<boolean>;
-  getHomeRouteForUser: (user: User) => string;
 };
 
 // Create context
@@ -66,36 +54,45 @@ export function useAuth() {
 
 // Auth provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Get user role and data with improved offline handling
-  const getUserData = async (uid: string) => {
+  const getUserData = async (uid: string): Promise<{ 
+    role: UserRole; 
+    displayName: string | null;
+    department?: string;
+  }> => {
     try {
       // First try to get from Firestore
       const userDoc = await getDoc(doc(db, 'users', uid));
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        // Determine role based on userData
-        let role = UserRole.EMPLOYEE; // Default role
         
-        if (userData.role === 'superAdmin') {
-          role = UserRole.SUPER_ADMIN;
-        } else if (userData.role === 'admin') {
-          role = UserRole.ADMIN;
+        // Map string role to enum
+        let role: UserRole;
+        switch (userData.role) {
+          case 'superAdmin':
+            role = UserRole.SUPER_ADMIN;
+            break;
+          case 'admin':
+            role = UserRole.ADMIN;
+            break;
+          default:
+            role = UserRole.EMPLOYEE;
         }
         
         // Store this data locally for offline use
         await SecureStorage.setItem(`user_data_${uid}`, JSON.stringify({
           role: userData.role,
-          displayName: userData.displayName || null,
+          displayName: userData.name || null,
           department: userData.department || undefined
         }));
         
         return {
           role,
-          displayName: userData.displayName || null,
+          displayName: userData.name || null,
           department: userData.department || undefined
         };
       }
@@ -111,12 +108,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const cachedUserData = await SecureStorage.getItem(`user_data_${uid}`);
           if (cachedUserData) {
             const userData = JSON.parse(cachedUserData);
-            let role = UserRole.EMPLOYEE;
+            let role: UserRole;
             
-            if (userData.role === 'superAdmin') {
-              role = UserRole.SUPER_ADMIN;
-            } else if (userData.role === 'admin') {
-              role = UserRole.ADMIN;
+            switch (userData.role) {
+              case 'superAdmin':
+                role = UserRole.SUPER_ADMIN;
+                break;
+              case 'admin':
+                role = UserRole.ADMIN;
+                break;
+              default:
+                role = UserRole.EMPLOYEE;
             }
             
             console.log('Successfully loaded user data from local storage');
@@ -136,12 +138,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Get home route for user based on role
-  const getHomeRouteForUser = (user: User): string => {
-    if (!user) return '/login';
-    return ROLE_HOME_ROUTES[user.role] || '/login';
-  };
-
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -150,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Get user data including role
           const { role, displayName, department } = await getUserData(firebaseUser.uid);
           
-          const userData = {
+          const userData: User = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             displayName: displayName || firebaseUser.displayName,
@@ -165,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: userData.displayName,
-            role,
+            role: userData.role,
             department
           }));
         } else {
@@ -187,16 +183,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // If we have saved state but no current user,
           // we can temporarily restore from local storage
           const userData = JSON.parse(savedAuthState);
+          
+          // Convert string role to enum if needed
+          let role: UserRole;
+          if (typeof userData.role === 'string') {
+            switch (userData.role) {
+              case 'superAdmin':
+                role = UserRole.SUPER_ADMIN;
+                break;
+              case 'admin':
+                role = UserRole.ADMIN;
+                break;
+              default:
+                role = UserRole.EMPLOYEE;
+            }
+          } else {
+            role = userData.role;
+          }
+          
           setUser({
             uid: userData.uid,
             email: userData.email || '',
             displayName: userData.displayName || null,
-            role: userData.role || UserRole.EMPLOYEE,
+            role,
             department: userData.department
           });
           
           console.log('Restored user session from local storage temporarily');
-          // Still keep loading true as we wait for Firebase auth to initialize
         }
       } catch (error) {
         console.error('Error restoring session:', error);
@@ -213,8 +226,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // Get user data including role
-      const userData = await getUserData(userCredential.user.uid);
+      // Get user data - the auth state change listener will handle setting the user
+      await getUserData(userCredential.user.uid);
       
       return true;
     } catch (error: any) {
@@ -280,8 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signIn,
     signOut,
-    resetPassword,
-    getHomeRouteForUser
+    resetPassword
   };
 
   // Provide auth context to children
