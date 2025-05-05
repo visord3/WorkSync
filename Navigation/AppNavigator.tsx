@@ -13,7 +13,9 @@ export type RootStackParamList = {
     CreateAdmin: undefined;
     Success: { email: string };
     Login: undefined;
-    CreateEmployee?: undefined;
+    CreateEmployee: undefined;
+    CreateShift: undefined;
+    ShiftsCalendar: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -47,11 +49,24 @@ const AppNavigator = () => {
                             component={CreateAdminScreen}
                         />
                     )}
-                    {/* Only show CreateEmployee screen for admin users */}
+                    {/* Admin specific screens */}
                     {user.role === UserRole.ADMIN && (
+                        <>
+                            <Stack.Screen
+                                name="CreateEmployee"
+                                component={require('../screens/CreateEmployeeScreen').default}
+                            />
+                            <Stack.Screen
+                                name="CreateShift"
+                                component={require('../screens/CreateShiftScreen').default}
+                            />
+                        </>
+                    )}
+                    {/* Employee specific screens */}
+                    {user.role === UserRole.EMPLOYEE && (
                         <Stack.Screen
-                            name="CreateEmployee"
-                            component={require('../screens/CreateEmployeeScreen').default}
+                            name="ShiftsCalendar"
+                            component={require('../screens/ShiftsCalendarScreen').default}
                         />
                     )}
                     <Stack.Screen name="Success" component={SuccessScreen} />

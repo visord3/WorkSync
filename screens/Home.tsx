@@ -43,6 +43,12 @@ const HomeScreen = () => {
           >
             <Text style={styles.buttonText}>Create Employee</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('CreateShift')}
+          >
+            <Text style={styles.buttonText}>Create Shift</Text>
+          </TouchableOpacity>
         </View>
       )}
       
@@ -72,8 +78,6 @@ const HomeScreen = () => {
     </View>
   );
 };
-
-export default HomeScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -151,3 +155,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default HomeScreen;
