@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { Alert} from 'react-native';
 // Import our wrapper instead of AsyncStorage directly
 import SecureStorage from '../storage/storage';
 // Assuming you're using Firebase
@@ -9,8 +9,16 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { auth, db } from '../firebase/firebaseconfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { 
+  auth, 
+  db 
+} from '../firebase/firebaseconfig';
+import { 
+  doc, 
+  getDoc,
+  onSnapshot,
+  getDocFromCache
+} from 'firebase/firestore';
 
 // Define user roles
 export enum UserRole {
@@ -61,10 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
 
-  // Get user role and data
+  // Get user role and data with improved offline handling
   const getUserData = async (uid: string) => {
     try {
+      // First try to get from Firestore
       const userDoc = await getDoc(doc(db, 'users', uid));
+      
       if (userDoc.exists()) {
         const userData = userDoc.data();
         // Determine role based on userData
@@ -76,15 +86,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role = UserRole.ADMIN;
         }
         
+        // Store this data locally for offline use
+        await SecureStorage.setItem(`user_data_${uid}`, JSON.stringify({
+          role: userData.role,
+          displayName: userData.displayName || null,
+          department: userData.department || undefined
+        }));
+        
         return {
           role,
           displayName: userData.displayName || null,
           department: userData.department || undefined
         };
       }
+      
       return { role: UserRole.EMPLOYEE, displayName: null };
-    } catch (error) {
-      console.error('Error getting user data:', error);
+    } catch (error: any) {
+      console.error('Error getting user data from Firestore:', error);
+      
+      // If offline error, try to get cached data from SecureStorage
+      if (error.code === 'unavailable' || error.message.includes('offline') || error.message.includes('Failed to get document')) {
+        console.log('Attempting to load user data from local storage...');
+        try {
+          const cachedUserData = await SecureStorage.getItem(`user_data_${uid}`);
+          if (cachedUserData) {
+            const userData = JSON.parse(cachedUserData);
+            let role = UserRole.EMPLOYEE;
+            
+            if (userData.role === 'superAdmin') {
+              role = UserRole.SUPER_ADMIN;
+            } else if (userData.role === 'admin') {
+              role = UserRole.ADMIN;
+            }
+            
+            console.log('Successfully loaded user data from local storage');
+            return {
+              role,
+              displayName: userData.displayName || null,
+              department: userData.department || undefined
+            };
+          }
+        } catch (storageError) {
+          console.error('Error getting cached user data:', storageError);
+        }
+      }
+      
+      // Default fallback
       return { role: UserRole.EMPLOYEE, displayName: null };
     }
   };
@@ -113,10 +160,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           setUser(userData);
           
-          // Store auth state in SecureStorage instead of AsyncStorage
+          // Store auth state in SecureStorage for offline access
           await SecureStorage.setItem('userAuthState', JSON.stringify({
             uid: firebaseUser.uid,
-            role
+            email: firebaseUser.email,
+            displayName: userData.displayName,
+            role,
+            department
           }));
         } else {
           setUser(null);
@@ -135,8 +185,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const savedAuthState = await SecureStorage.getItem('userAuthState');
         if (savedAuthState && !auth.currentUser) {
           // If we have saved state but no current user,
-          // we'll wait for onAuthStateChanged to handle it
-          console.log('Found saved auth state, waiting for Firebase auth...');
+          // we can temporarily restore from local storage
+          const userData = JSON.parse(savedAuthState);
+          setUser({
+            uid: userData.uid,
+            email: userData.email || '',
+            displayName: userData.displayName || null,
+            role: userData.role || UserRole.EMPLOYEE,
+            department: userData.department
+          });
+          
+          console.log('Restored user session from local storage temporarily');
+          // Still keep loading true as we wait for Firebase auth to initialize
         }
       } catch (error) {
         console.error('Error restoring session:', error);
@@ -159,7 +219,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error: any) {
       console.error('Sign in error:', error);
-      Alert.alert('Login Failed', 'Invalid email or password');
+      
+      // Provide more specific error messages
+      if (error.code === 'auth/network-request-failed') {
+        Alert.alert('Login Failed', 'Network connection unavailable. Please check your internet connection.');
+      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        Alert.alert('Login Failed', 'Invalid email or password');
+      } else if (error.code === 'auth/too-many-requests') {
+        Alert.alert('Login Failed', 'Too many unsuccessful login attempts. Please try again later.');
+      } else {
+        Alert.alert('Login Failed', error.message || 'An error occurred during login');
+      }
+      
       return false;
     } finally {
       setLoading(false);
@@ -172,6 +243,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       await firebaseSignOut(auth);
       await SecureStorage.removeItem('userAuthState');
+      // Also clear any user data
+      const keys = await SecureStorage.getAllKeys();
+      const userDataKeys = keys.filter(key => key.startsWith('user_data_'));
+      await SecureStorage.multiRemove(userDataKeys);
     } catch (error) {
       console.error('Sign out error:', error);
     } finally {
@@ -184,9 +259,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await sendPasswordResetEmail(auth, email);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Password reset error:', error);
-      Alert.alert('Password Reset Failed', 'Unable to send password reset email');
+      
+      if (error.code === 'auth/network-request-failed') {
+        Alert.alert('Password Reset Failed', 'Network connection unavailable. Please check your internet connection.');
+      } else if (error.code === 'auth/user-not-found') {
+        Alert.alert('Password Reset Failed', 'No account found with this email address.');
+      } else {
+        Alert.alert('Password Reset Failed', error.message || 'Unable to send password reset email');
+      }
+      
       return false;
     }
   };

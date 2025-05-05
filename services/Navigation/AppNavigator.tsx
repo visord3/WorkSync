@@ -1,8 +1,8 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import CreateAdminScreen from '../SAcreateAdmin';
-import HomeScreen from '../Home';
+import CreateAdminScreen from '../../screens/SAcreateAdmin';
+import HomeScreen from '../../screens/Home';
 import { AppRegistry } from 'react-native';
 
  const Stack=createNativeStackNavigator();

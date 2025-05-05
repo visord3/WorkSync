@@ -1,22 +1,34 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Button } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../Navigation/AppNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Button } from 'react-native';
+import { useAuth, UserRole } from '../services/auth/auth.service';
 
- const HomeScreen = () => {
-  type Navigation = NativeStackNavigationProp<RootStackParamList, 'Home'>;
-  const navigation = useNavigation<Navigation>();
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+
+const HomeScreen = () => {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { user } = useAuth();
+  
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to WorkSync</Text>
-      <Text style={styles.subtitle}>Super Admin Dashboard</Text>
-      <Button
-       title='createAdmin'
-       onPress={()=>navigation.navigate('CreateAdmin')}/>
-        
- 
+      {user && user.role === UserRole.SUPER_ADMIN && (
+        <>
+          <Text style={styles.subtitle}>Super Admin Dashboard</Text>
+          <Button
+            title="Create Admin"
+            onPress={() => navigation.navigate('CreateAdmin')}
+          />
+        </>
+      )}
+      {user && user.role === UserRole.ADMIN && (
+        <Text style={styles.subtitle}>Admin Dashboard</Text>
+      )}
+      {user && user.role === UserRole.EMPLOYEE && (
+        <Text style={styles.subtitle}>Employee Dashboard</Text>
+      )}
     </View>
   );
 };
@@ -38,5 +50,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 18,
     color: '#666',
+    marginBottom: 20,
   },
 });
