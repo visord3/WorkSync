@@ -1,12 +1,16 @@
-// CreateAdminScreen.tsx
+// screens/SAcreateAdmin.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getApp } from 'firebase/app';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../Navigation/AppNavigator';
+import { app } from '../services/firebase/firebaseconfig';
 
-import {app} from '../services/firebase/firebaseconfig';
+type CreateAdminScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CreateAdmin'>;
 
 const CreateAdminScreen = () => {
+  const navigation = useNavigation<CreateAdminScreenNavigationProp>();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -46,9 +50,17 @@ const CreateAdminScreen = () => {
       // The result data will contain the uid and email from the cloud function
       const { uid, email: createdEmail } = result.data as { uid: string; email: string };
       
-      Alert.alert('Success', `Admin ${createdEmail} created.`,
-        
+      Alert.alert(
+        'Success', 
+        `Admin ${createdEmail} created successfully.`,
+        [
+          { 
+            text: 'OK', 
+            onPress: () => navigation.navigate('Success', { email: createdEmail }) 
+          }
+        ]
       );
+      
       setForm({ name: '', email: '', password: '', phone: '', address: '' });
     } catch (err: any) {
       // Handle specific error codes from the cloud function

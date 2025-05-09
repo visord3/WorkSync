@@ -470,4 +470,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  },
+  }
+}); // Added closing brace to fix the error

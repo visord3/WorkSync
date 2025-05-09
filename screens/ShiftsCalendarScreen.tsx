@@ -1,3 +1,4 @@
+// shiftsCalenderScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -14,7 +15,6 @@ import { db } from '../services/firebase/firebaseconfig';
 import { Shift, ShiftStatus } from '../services/shifts/shifts.model';
 import { Calendar } from 'react-native-calendars';
 import { useShifts } from '../services/shifts/shifts.service';
-import * as firebase from 'firebase/firestore';
 
 // Interface for the marked dates
 interface MarkedDates {
@@ -115,8 +115,8 @@ const ShiftsCalendarScreen = () => {
     try {
       const success = await clockIn(shiftId);
       if (success) {
-        // Update the local shift status - using Timestamp instead of Date
-        const now = firebase.firestore.Timestamp.now();
+        // Update the local shift status - using Timestamp directly instead of firebase.firestore
+        const now = Timestamp.now(); // Fixed: removed firebase.firestore prefix
         setShifts(prevShifts => 
           prevShifts.map(shift => 
             shift.id === shiftId 
@@ -143,8 +143,8 @@ const ShiftsCalendarScreen = () => {
     try {
       const success = await clockOut(shiftId);
       if (success) {
-        // Update the local shift status - using Timestamp instead of Date
-        const now = firebase.firestore.Timestamp.now();
+        // Update the local shift status - using Timestamp directly instead of firebase.firestore
+        const now = Timestamp.now(); // Fixed: removed firebase.firestore prefix
         setShifts(prevShifts => 
           prevShifts.map(shift => 
             shift.id === shiftId 
