@@ -1,5 +1,5 @@
-import React from 'react';
-import { SafeAreaView, StyleSheet, StatusBar, LogBox } from 'react-native';
+import React, { useEffect } from 'react';
+import { SafeAreaView, StyleSheet, StatusBar, LogBox, Platform } from 'react-native';
 import AppNavigator from './Navigation/AppNavigator';
 import { AuthProvider } from './services/auth/auth.service';
 import { ShiftsProvider } from './services/shifts/shifts.service';
@@ -10,6 +10,9 @@ LogBox.ignoreLogs([
   'AsyncStorage has been extracted from react-native',
   'Possible Unhandled Promise Rejection',
   'Setting a timer for a long period',
+  'expo-notifications module has not been properly initialized',
+  'Found screens with the same name nested inside one another',
+  '[react-native-gesture-handler]',
 ]);
 
 // App Theme Constants
@@ -48,6 +51,19 @@ export const THEME = {
 };
 
 export default function App() {
+  // Apply fixes for Android
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      // Force app to redraw on load
+      setTimeout(() => {
+        StatusBar.setHidden(true);
+        setTimeout(() => {
+          StatusBar.setHidden(false);
+        }, 50);
+      }, 500);
+    }
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />

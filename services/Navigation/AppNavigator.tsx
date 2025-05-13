@@ -1,17 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 
-// Direct imports for all screens - no more require()
+// Import all screens directly
 import CreateAdminScreen from '../../screens/SAcreateAdmin';
 import HomeScreen from '../../screens/Home';
 import SuccessScreen from '../../screens/success';
 import LoginScreen from '../../screens/logInPage';
 import CreateEmployeeScreen from '../../screens/CreateEmployeeScreen';
 import CreateShiftScreen from '../../screens/CreateShiftScreen';
-import ShiftsCalendarScreen from '../../screens/shiftsCalenderScreen';
+import ShiftsCalendarScreen from '../../screens/ShiftsCalendarScreen';
 import { useAuth, UserRole } from '../../services/auth/auth.service';
+import { THEME } from '../../App';
 
 export type RootStackParamList = {
     Home: undefined;
@@ -25,74 +26,14 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// Admin-specific screens
-const AdminScreens = () => (
-  <>
-    <Stack.Screen 
-      name="CreateEmployee"
-      component={CreateEmployeeScreen}
-      options={{ 
-        title: "Create Employee",
-        headerStyle: { backgroundColor: '#3498db' },
-        headerTintColor: '#fff',
-      }}
-    />
-    <Stack.Screen 
-      name="CreateShift"
-      component={CreateShiftScreen}
-      options={{ 
-        title: "Create Shift",
-        headerStyle: { backgroundColor: '#3498db' },
-        headerTintColor: '#fff',
-      }}
-    />
-  </>
-);
-
-// SuperAdmin-specific screens
-const SuperAdminScreens = () => (
-  <Stack.Screen 
-    name="CreateAdmin"
-    component={CreateAdminScreen}
-    options={{ 
-      title: "Create Administrator",
-      headerStyle: { backgroundColor: '#3498db' },
-      headerTintColor: '#fff',
-    }}
-  />
-);
-
-// Employee-specific screens
-const EmployeeScreens = () => (
-  <Stack.Screen 
-    name="ShiftsCalendar"
-    component={ShiftsCalendarScreen}
-    options={{ 
-      title: "My Shifts",
-      headerStyle: { backgroundColor: '#3498db' },
-      headerTintColor: '#fff',
-    }}
-  />
-);
-
 const AppNavigator = () => {
     const { user, loading } = useAuth();
-    const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Home');
-
-    // Set initial route based on user role when auth state is determined
-    useEffect(() => {
-        if (!loading && user) {
-            setInitialRoute('Home');
-        } else if (!loading && !user) {
-            setInitialRoute('Login');
-        }
-    }, [loading, user]);
 
     // Show loading indicator while auth state is being determined
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#3498db" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.colors.background }}>
+                <ActivityIndicator size="large" color={THEME.colors.primary} />
             </View>
         );
     }
@@ -102,11 +43,13 @@ const AppNavigator = () => {
             {user ? (
                 // Authenticated routes
                 <Stack.Navigator 
-                  initialRouteName={initialRoute}
-                  screenOptions={{
-                    headerStyle: { backgroundColor: '#3498db' },
-                    headerTintColor: '#fff',
-                  }}
+                    initialRouteName="Home"
+                    screenOptions={{
+                        headerStyle: { backgroundColor: THEME.colors.primary },
+                        headerTintColor: '#fff',
+                        headerTitleStyle: { fontWeight: 'bold' },
+                        contentStyle: { backgroundColor: THEME.colors.background }
+                    }}
                 >
                     <Stack.Screen
                         name="Home"
@@ -114,21 +57,48 @@ const AppNavigator = () => {
                         options={{ headerShown: false }}
                     />
                     
-                    {/* Common screens for all roles */}
+                    {/* Success screen available to all roles */}
                     <Stack.Screen 
-                      name="Success" 
-                      component={SuccessScreen}
-                      options={{ 
-                        title: "Success",
-                        headerStyle: { backgroundColor: '#2ecc71' },
-                        headerTintColor: '#fff',
-                      }}
+                        name="Success" 
+                        component={SuccessScreen}
+                        options={{ 
+                            title: "Success",
+                            headerStyle: { backgroundColor: THEME.colors.secondary },
+                        }}
                     />
                     
                     {/* Role-specific screens */}
-                    {user.role === UserRole.SUPER_ADMIN && <SuperAdminScreens />}
-                    {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) && <AdminScreens />}
-                    {user.role === UserRole.EMPLOYEE && <EmployeeScreens />}
+                    {(user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) && (
+                        <>
+                            {user.role === UserRole.SUPER_ADMIN && (
+                                <Stack.Screen
+                                    name="CreateAdmin"
+                                    component={CreateAdminScreen}
+                                    options={{ title: "Create Administrator" }}
+                                />
+                            )}
+                            
+                            <Stack.Screen
+                                name="CreateEmployee"
+                                component={CreateEmployeeScreen}
+                                options={{ title: "Create Employee" }}
+                            />
+                            
+                            <Stack.Screen
+                                name="CreateShift"
+                                component={CreateShiftScreen}
+                                options={{ title: "Create Shift" }}
+                            />
+                        </>
+                    )}
+                    
+                    {user.role === UserRole.EMPLOYEE && (
+                        <Stack.Screen
+                            name="ShiftsCalendar"
+                            component={ShiftsCalendarScreen}
+                            options={{ title: "My Shifts" }}
+                        />
+                    )}
                 </Stack.Navigator>
             ) : (
                 // Unauthenticated routes

@@ -1,25 +1,54 @@
+// screens/logInPage.tsx
 import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
+  Image,
+  Alert,
   Platform,
-  ActivityIndicator,
-  Alert
+  KeyboardAvoidingView,
+  TouchableOpacity
 } from 'react-native';
 import { useAuth } from '../services/auth/auth.service';
+import { THEME } from '../App';
+import Container from '../components/container';
+import Input from '../components/input';
+import Button from '../components/Button';
+import Card from '../components/card';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const { signIn, loading, resetPassword } = useAuth();
 
+  const validateForm = () => {
+    let isValid = true;
+    setEmailError('');
+    setPasswordError('');
+    
+    // Validate email
+    if (!email) {
+      setEmailError('Email is required');
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      setEmailError('Please enter a valid email address');
+      isValid = false;
+    }
+    
+    // Validate password
+    if (!password) {
+      setPasswordError('Password is required');
+      isValid = false;
+    }
+    
+    return isValid;
+  };
+
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+    if (!validateForm()) {
       return;
     }
 
@@ -36,6 +65,11 @@ const LoginScreen = () => {
       return;
     }
 
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
     const success = await resetPassword(email);
     if (success) {
       Alert.alert('Success', 'Password reset email sent. Please check your inbox.');
@@ -43,128 +77,128 @@ const LoginScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.loginContainer}>
-        <Text style={styles.title}>WorkSynch</Text>
-        <Text style={styles.subtitle}>Sign in to your account</Text>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="example@company.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+    <Container scroll keyboardAvoiding padding={false}>
+      <View style={styles.logoContainer}>
+        <Image 
+          source={require('../assets/icon.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.appName}>WorkSync</Text>
+        <Text style={styles.tagline}>Streamline your workforce management</Text>
       </View>
-    </KeyboardAvoidingView>
+      
+      <Card style={styles.loginCard}>
+        <Text style={styles.title}>Sign In</Text>
+        
+        <Input
+          label="Email"
+          placeholder="example@company.com"
+          value={email}
+          onChangeText={(text) => {
+            setEmail(text);
+            setEmailError('');
+          }}
+          error={emailError}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          textContentType="emailAddress"
+        />
+
+        <Input
+          label="Password"
+          placeholder="Enter your password"
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            setPasswordError('');
+          }}
+          error={passwordError}
+          secureTextEntry
+          autoComplete="password"
+          textContentType="password"
+        />
+
+        <TouchableOpacity 
+          onPress={handleForgotPassword} 
+          style={styles.forgotPasswordButton}
+          disabled={loading}
+        >
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        <Button
+          title="Sign In"
+          onPress={handleLogin}
+          loading={loading}
+          fullWidth
+          style={styles.loginButton}
+        />
+      </Card>
+            
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          © 2025 WorkSync. All rights reserved.
+        </Text>
+      </View>
+    </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: THEME.spacing.xlarge * 2,
+    marginBottom: THEME.spacing.xlarge,
+    paddingHorizontal: THEME.spacing.large,
   },
-  loginContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    maxWidth: 500,
-    width: '100%',
-    alignSelf: 'center',
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: THEME.spacing.medium,
+  },
+  appName: {
+    fontSize: THEME.fontSize.xxlarge,
+    fontWeight: 'bold',
+    color: THEME.colors.primary,
+    marginBottom: THEME.spacing.small,
+  },
+  tagline: {
+    fontSize: THEME.fontSize.medium,
+    color: THEME.colors.textLight,
+    textAlign: 'center',
+  },
+  loginCard: {
+    marginHorizontal: THEME.spacing.large,
+    marginBottom: THEME.spacing.xlarge,
+    padding: THEME.spacing.large,
   },
   title: {
-    fontSize: 28,
+    fontSize: THEME.fontSize.xlarge,
     fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 30,
+    color: THEME.colors.text,
+    marginBottom: THEME.spacing.large,
     textAlign: 'center',
   },
-  form: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    marginBottom: 5,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    fontSize: 16,
-  },
-  forgotPassword: {
+  forgotPasswordButton: {
     alignSelf: 'flex-end',
-    marginBottom: 20,
+    marginBottom: THEME.spacing.medium,
   },
   forgotPasswordText: {
-    color: '#3498db',
-    fontSize: 14,
+    color: THEME.colors.primary,
+    fontSize: THEME.fontSize.medium,
   },
-  button: {
-    backgroundColor: '#3498db',
-    borderRadius: 5,
-    padding: 15,
+  loginButton: {
+    marginTop: THEME.spacing.small,
+  },
+  footer: {
+    padding: THEME.spacing.medium,
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  footerText: {
+    color: THEME.colors.textLight,
+    fontSize: THEME.fontSize.small,
   },
 });
 

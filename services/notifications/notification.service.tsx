@@ -1,14 +1,35 @@
 // services/notifications/notification.service.tsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { Platform, Alert } from 'react-native';
-// Temporarily modify this line
-// import * as Device from 'expo-device';
-// Replace with this temporary workaround:
-const Device = { isDevice: true, modelName: "Unknown" };
-import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { useAuth } from '../auth/auth.service';
 import { doc, setDoc, getDoc, updateDoc, arrayUnion, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/firebaseconfig';
+
+// Safely import Expo modules with fallbacks
+let Notifications: any = null;
+let Device: any = { isDevice: true, modelName: "Unknown" };
+
+// Try to import Expo modules, but provide fallbacks if they fail
+try {
+  Notifications = require('expo-notifications');
+} catch (error) {
+  console.warn('expo-notifications not available, notification features will be limited');
+  // Create a mock implementation
+  Notifications = {
+    setNotificationHandler: () => {},
+    addNotificationReceivedListener: () => ({ remove: () => {} }),
+    addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+    getPermissionsAsync: async () => ({ status: 'denied' }),
+    requestPermissionsAsync: async () => ({ status: 'denied' }),
+    getExpoPushTokenAsync: async () => ({ data: null }),
+  };
+}
+
+try {
+  Device = require('expo-device');
+} catch (error) {
+  console.warn('expo-device not available, using fallback device info');
+}
 
 // Define notification types
 export enum NotificationType {
@@ -34,7 +55,7 @@ export interface AppNotification {
 
 // Define notification context type
 type NotificationContextType = {
-  expoPushToken: string | null; // Changed from string | undefined to string | null
+  expoPushToken: string | null;
   notifications: AppNotification[];
   unreadCount: number;
   loading: boolean;
@@ -60,43 +81,45 @@ export function useNotification() {
 // Notification provider component
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [expoPushToken, setExpoPushToken] = useState<string | null>(null); // Changed to null
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // services/notifications/notification.service.tsx (continued)
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Configure notification settings
   useEffect(() => {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
+    try {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
 
-    // Register for push notifications
-    registerForPushNotifications();
+      // Register for push notifications
+      registerForPushNotifications();
 
-    // Listen for incoming notifications
-    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      // Handle incoming notification
-      refreshNotifications();
-    });
+      // Listen for incoming notifications
+      const notificationListener = Notifications.addNotificationReceivedListener(() => {
+        // Handle incoming notification
+        refreshNotifications();
+      });
 
-    // Listen for user interactions with notifications
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      // Handle notification response
-      console.log('Notification tapped:', response);
-    });
+      // Listen for user interactions with notifications
+      const responseListener = Notifications.addNotificationResponseReceivedListener((response: any) => {
+        // Handle notification response
+        console.log('Notification tapped:', response);
+      });
 
-    // Clean up listeners
-    return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
-    };
+      // Clean up listeners
+      return () => {
+        notificationListener.remove();
+        responseListener.remove();
+      };
+    } catch (error) {
+      console.warn('Error setting up notifications:', error);
+    }
   }, []);
 
   // Load notifications when user changes
@@ -132,10 +155,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       // Get Expo push token
       const tokenData = await Notifications.getExpoPushTokenAsync();
-      
-      // Use null instead of undefined when token might not exist
-      // This is the fix for the TypeScript error
-      const tokenValue = tokenData.data || null;
+      const tokenValue = tokenData?.data || null;
       setExpoPushToken(tokenValue);
 
       // Store token in Firestore if user is authenticated
@@ -203,7 +223,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
-      Alert.alert('Error', 'Failed to load notifications. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -212,19 +231,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Request notification permissions
   const requestPermissions = async (): Promise<boolean> => {
     if (!Device.isDevice) {
-      Alert.alert('Notice', 'Push notifications are not available in the simulator');
+      console.warn('Push notifications are not available in the simulator');
       return false;
     }
 
     try {
       const { status } = await Notifications.requestPermissionsAsync();
-      const finalStatus = status;
       
-      if (finalStatus !== 'granted') {
-        Alert.alert(
-          'Permissions Required',
-          'Please enable notifications in your device settings to receive shift updates.'
-        );
+      if (status !== 'granted') {
+        console.warn('Notification permissions not granted');
         return false;
       }
       
@@ -279,10 +294,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       await updateDoc(notificationsRef, {
         items: arrayUnion(notification)
       });
-      
-      // Send push notification to all recipient tokens
-      // This would typically be handled by a cloud function
-      // Here we're just simulating success
       
       return true;
     } catch (error) {
