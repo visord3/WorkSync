@@ -1,3 +1,4 @@
+// Fixed components/input.tsx
 import React from 'react';
 import { 
   View, 
@@ -36,7 +37,7 @@ const Input = ({
         style={[
           styles.input, 
           inputStyle,
-          //error && styles.inputError
+          error ? styles.inputError : undefined 
         ]}
         placeholderTextColor={THEME.colors.textLight}
         {...rest}

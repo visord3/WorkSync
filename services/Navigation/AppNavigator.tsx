@@ -1,3 +1,4 @@
+// services/Navigation/AppNavigator.tsx
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -11,7 +12,7 @@ import LoginScreen from '../../screens/logInPage';
 import CreateEmployeeScreen from '../../screens/CreateEmployeeScreen';
 import CreateShiftScreen from '../../screens/CreateShiftScreen';
 import ShiftsCalendarScreen from '../../screens/ShiftsCalendarScreen';
-import { useAuth, UserRole } from '../../services/auth/auth.service';
+import { useAuth, UserRole } from '../auth/auth.service';
 import { THEME } from '../../App';
 
 export type RootStackParamList = {

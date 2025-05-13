@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { SafeAreaView, StyleSheet, StatusBar, LogBox, Platform } from 'react-native';
-import AppNavigator from './Navigation/AppNavigator';
+import AppNavigator from './services/Navigation/AppNavigator';
 import { AuthProvider } from './services/auth/auth.service';
 import { ShiftsProvider } from './services/shifts/shifts.service';
 import { NotificationProvider } from './services/notifications/notification.service';
